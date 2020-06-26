@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+	<script src="./lib/jquery/jquery_3.3.1.min.js"></script>
+	<script src="./lib/exif.js"></script>
+	<meta charset="UTF-8">
+	<title>canvas4</title>
+
+	<style type="text/css">
+		
+		*,:before,:after {margin:0; padding:0; color: inherit; font-style: inherit; text-decoration: inherit; border:0px solid transparent; outline: 0; background: transparent none 50% 50% no-repeat; box-sizing: border-box; font-family: 'Noto Sans KR', sans-serif; -webkit-tap-highlight-color: transparent;}
+		ul, ol {list-style: none;}
+		table {table-layout: fixed;     border-spacing: 0;}
+		h1, h2, h3, h4, h5, h6 {font-size: inherit; font-weight: inherit;}
+		label, button, [type=button], [type=submit], [type=reset], a {cursor:pointer;}
+		img {display: block; max-width: 100%;}
+
+		.clearfix:after {content: ""; display: block; clear: both;}
+		.ellipsis {overflow: hidden; white-space: nowrap; text-overflow: ellipsis;}
+		.upper {text-transform: uppercase;}
+		.hidden {display:none; width:0; height:0; visibility: hidden; opacity: 0;}
+		.bold {font-weight: 700;}
+
+		[type="checkbox"], [type="radio"] {display:none;}
+		.inner {display:block; position:relative; margin:auto; max-width:1280px;  height:100%;}
+		.inner:after {content: ""; display: block; clear: both;}
+
+		label::selection,
+		a::selection,
+		nav *::selection {background-color: transparent;}
+
+	</style>
+</head>
+<body>
+	
+	<div class="edit_img_area" style="position: relative; top:0px; left:50%; width: 100%; height: 0mm; transform: translate(-50%,0%);">
+		<input type="file" name="" accept="image/*" class="edit_img_file" multiple="">
+		<canvas class="edit_img" width="320" height="320" style="position:absolute; top:50%; left:50%; transform :translate(-50%,-50%) rotate(90deg); border:1px solid #ddd; z-index: 1; display: block; margin:auto;">
+			canvas not supported
+		</canvas>
+		<!-- <img src=""> -->
+		<button type="button" onclick="drawRotated(90)">오른쪽회전</button>
+		<button type="button" onclick="drawRotated(-90)">왼쪽회전</button>
+	</div>
+
+</body>
+	<script type="text/javascript">
+
+		
+
+		// div size
+		$(document).ready(function(){
+			edit_size();
+		});
+
+		$(window).resize(function(){
+			edit_size();
+		});
+
+		function edit_size (){
+			let path = document.querySelector('.edit_img_area');
+			let win_h = window.innerHeight;
+			// path.style.height = (path.offsetWidth * 1.41)+'px';
+			path.style.height = win_h + 'px';
+		}
+
+		// crop, rotate, draw
+		let tool;
+		let drawCanvas = document.querySelector('.edit_img');
+
+		let draw_color = 'red';
+		let draw_lineWidth = 3;
+
+		let edit_file = document.querySelector('.edit_img_file');
+		let edit_img_area = document.querySelector('.edit_img_area');
+
+		let isDraw = false;
+		let drawBackup = [];
+		let drawBackup2 = [];
+
+		let canvas = document.querySelector('.edit_img');
+		let ctx = canvas.getContext("2d");
+		ctx.imageSmoothingQuality = 'high';
+
+		let tempImage;
+
+
+
+		edit_file.onchange = function(e){
+			let reader = new FileReader();
+			let orien;
+
+			reader.readAsDataURL(this.files[0]);
+
+			reader.onload = function (evt) {
+				let file = e.target.files[0];
+				console.log(e);
+				
+				if (file && file.name) {
+					EXIF.getData(file, function() {
+					    let exifData = EXIF.pretty(this);
+					    orien = exifData.split(':')[5];
+
+					    let _canvas = document.querySelector('.edit_img');
+					    let _ctx = canvas.getContext("2d");
+
+					    tempImage = new Image();
+					    tempImage.src = reader.result;
+
+					    tempImage.onload = function () {
+					    	img_draw(this);
+					    	img = canvas.toDataURL('image/png');
+					    	tempImage2 = new Image();
+					    	tempImage2.src = img;			    	
+					    }
+					});
+				}
+			}
+		}
+		
+		// mouse
+		$('.edit_img').bind('mousedown', function(e) {
+		  if (e.button===0) {
+		  	console.log(e.originalEvent.offsetX);
+		    saveCanvas();
+		    e.preventDefault();
+		    ctx.beginPath();
+		    
+		    isDraw = true;
+		  }
+		});
+
+		$('.edit_img').bind('mousemove', function(e) {
+		  var event = e.originalEvent;
+		  e.preventDefault();
+		  xy_point = { X:event.offsetX, Y:event.offsetY };
+		  if(isDraw) draw_line(xy_point);
+		});
+		$('.edit_img').bind('mouseup', function(e) {
+		  e.preventDefault();
+		  isDraw = false;
+		});
+		$('.edit_img').bind('mouseleave', function(e) {
+		  isDraw = false;
+		});
+
+
+		//touch
+		let pDraw = $('.edit_img').offset();
+		$('.edit_img').bind('touchstart', function(e) {
+		   console.log(e.originalEvent.touches[0].pageX);
+		   console.log(pDraw);
+		  saveCanvas();
+		  e.preventDefault();
+		  ctx.beginPath();
+		  pDraw = $('.edit_img').offset();
+
+		});
+		$('.edit_img').bind('touchmove', function(e) {
+		  var event = e.originalEvent;
+		  e.preventDefault();
+		  xy_point = { X:event.touches[0].pageX-pDraw.left, Y:event.touches[0].pageY-pDraw.top };
+		  draw_line(xy_point);
+		});
+		$('.edit_img').bind('touchend', function(e) {
+		  e.preventDefault();
+		});
+
+
+
+		function draw_line(p) {
+		  ctx.lineWidth = draw_lineWidth;
+		  ctx.lineCap = 'round';
+		  ctx.lineTo(p.X, p.Y);
+		  ctx.moveTo(p.X, p.Y);
+		  ctx.strokeStyle = draw_color;
+		  ctx.stroke();
+		}
+
+		function saveImage() { // save to localStorage
+		   let imgDataUrl = canvas.toDataURL('image/png');
+
+		   let blobBin = atob(imgDataUrl.split(',')[1]);
+		   let array = [];
+		    for (let i = 0; i < blobBin.length; i++) {
+		        array.push(blobBin.charCodeAt(i));
+		    }
+		   let file = new Blob([new Uint8Array(array)], {type: 'image/png'});  // Blob 생성
+		  let formdata = new FormData();  // formData 생성
+		  formdata.append("file", file);
+		   $.ajax({
+		      type : 'post',
+		      url : '',
+		      data : formdata,
+		      processData : false,  
+		      contentType : false,  
+		      success : function (data) {
+		       // console.log('hi');
+		         
+		      }
+		      
+		  });
+		   let img =  document.getElementById('saveImg');
+		   img.src = canvas.toDataURL('image/png');
+		   let tmp = $('<a>').attr('download', 'test.png').attr('href', img.src);
+		   tmp[0].click();
+		   tmp.remove();
+		 }
+
+
+		function clearCanvas() {
+		   ctx.clearRect(0, 0, canvas.width, canvas.height);
+		   ctx.beginPath();
+		   localStorage.removeItem('imgCanvas');
+		 }
+
+
+		function saveCanvas() {
+		   drawBackup.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+		   // drawBackup2.push(ctx.save());
+		   // console.log(ctx.save());
+		 }
+
+
+		function prevCanvas() {
+		   if(drawBackup.length <= 0){
+		     return false;
+		   }
+		   ctx.putImageData(drawBackup.pop(), 0, 0);
+		 }
+
+		 let img = canvas.toDataURL('image/png');
+		 let tempImage2 = new Image();
+		 tempImage2.src = img;
+
+		function drawRotated(deg){
+			let saveVal = tempImage2.width;
+			img = canvas.toDataURL('image/png');
+			canvas.width = tempImage2.height;
+			canvas.height = saveVal;
+
+			ctx.clearRect(0,0,canvas.width,canvas.height);
+			ctx.save();
+			ctx.translate(canvas.width/2,canvas.height/2);
+			ctx.rotate(deg*Math.PI/180);
+			ctx.drawImage(tempImage2,-tempImage2.width/2,-tempImage2.height/2);
+			tempImage2.src = canvas.toDataURL('image/png');
+			tempImage2.onload = function(){
+				img_draw(tempImage2);
+			}
+			ctx.restore();
+	    }
+
+	    function img_draw(_this) {
+	    	const temp_wid = _this.width;
+	    	const temp_hei = _this.height;
+	    	const edit_wid = edit_img_area.offsetWidth;
+	    	const edit_hei = edit_img_area.offsetHeight;
+
+	    	let temp_per; // 비율
+	    	let img_way = temp_wid<temp_hei; // true 세로 false 가로
+	    	let canvas_way = edit_wid<edit_hei; // true 세로 flase 가로 
+
+	    	// 비율구하기
+	    	img_way ? temp_per=(temp_wid/temp_hei) : temp_per=(temp_hei/temp_wid);
+
+	    	// console.log(`${temp_wid} / ${temp_hei} / ${edit_wid} / ${edit_hei} / ${temp_wid<temp_hei} / ${temp_wid/temp_hei} / ${edit_wid<edit_hei} / ${temp_per}`);
+
+	    	// 이미지와 캔버스가 가로인지, 세로인지, 크기는 초과하는지 안하는지 체크
+
+	    	if(temp_wid<edit_wid&&temp_hei<edit_hei) {
+	    		// 캔버스가 이미지보다 작은 경우,
+	    		canvas.width = temp_wid;
+	    		canvas.height = temp_hei;
+
+	    	} else if (temp_wid>edit_wid&&temp_hei>edit_hei&&!canvas_way) {
+	    		// 가로세로 클때, 화면 가로형 일때
+
+	    		canvas.width = (edit_hei-100)/temp_per;
+	    		canvas.height = edit_hei-100;
+	    		
+	    		if(canvas.width>edit_wid&&img_way) {
+	    			canvas.width = edit_wid-10;
+	    			canvas.height = (edit_wid-10)/temp_per;
+	    		} else if(canvas.width>edit_wid&&!img_way) {
+	    			canvas.width = edit_wid-10;
+	    			canvas.height = (edit_wid-10)*temp_per;
+	    		}
+
+	     	} else if (temp_wid>edit_wid&&temp_hei>edit_hei&&canvas_way&&img_way) {
+	     		// 가로세로가 클때, 화면이 세로형인 경우
+	    		canvas.width = edit_wid-10;
+	    		canvas.height = (edit_wid-10)/temp_per;
+				
+				if(canvas.height>edit_hei&&img_way) {
+					canvas.width = (edit_hei-100)*temp_per;
+					canvas.height = edit_hei-100;
+				}
+	     	} else if (img_way) {
+	     		// 세로 이미지 기본형
+	    		canvas.width = (edit_hei-100)*temp_per;
+	    		canvas.height = edit_hei-100;
+	    	} else {
+	    		// 기본형
+	    		canvas.width = edit_wid-10;
+	    		canvas.height = (edit_wid-10)*temp_per;
+	    	}
+	    	ctx.drawImage(_this,0,0,canvas.width,canvas.height);
+	    	saveCanvas();
+	    }
+
+
+
+
+
+	</script>

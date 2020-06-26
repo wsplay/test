@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+	<script src="./lib/jquery/jquery_3.3.1.min.js"></script>
+	<link href="//vjs.zencdn.net/7.8.2/video-js.min.css" rel="stylesheet">
+	<script src="https://vjs.zencdn.net/ie8/1.1.2/vide<!-- o -->js-ie8.min.js"></script>
+	<!-- <script src="./lib/exif.js"></script> -->
+	<meta charset="UTF-8">
+	<title>video</title>
+
+	<style type="text/css">
+		
+		*,:before,:after {margin:0; padding:0; color: inherit; font-style: inherit; text-decoration: inherit; border:0px solid transparent; outline: 0; background: transparent none 50% 50% no-repeat; box-sizing: border-box; font-family: 'Noto Sans KR', sans-serif; -webkit-tap-highlight-color: transparent;}
+		ul, ol {list-style: none;}
+		table {table-layout: fixed;     border-spacing: 0;}
+		h1, h2, h3, h4, h5, h6 {font-size: inherit; font-weight: inherit;}
+		label, button, [type=button], [type=submit], [type=reset], a {cursor:pointer;}
+		img {display: block; max-width: 100%;}
+
+		.clearfix:after {content: ""; display: block; clear: both;}
+		.ellipsis {overflow: hidden; white-space: nowrap; text-overflow: ellipsis;}
+		.upper {text-transform: uppercase;}
+		.hidden {display:none; width:0; height:0; visibility: hidden; opacity: 0;}
+		.bold {font-weight: 700;}
+
+		[type="checkbox"], [type="radio"] {display:none;}
+		.inner {display:block; position:relative; margin:auto; max-width:1280px;  height:100%;}
+		.inner:after {content: ""; display: block; clear: both;}
+
+		label::selection,
+		a::selection,
+		nav *::selection {background-color: transparent;}
+
+	</style>
+</head>
+<body>
+	
+	<video id="my-video"
+    class="video-js"
+    controls
+    preload="none"
+    width="640"
+    height="264">
+	    <!-- <source src="./video/KakaoTalk_Video_20190219_1704_48_452.mp4" type="video/mp4"> -->
+
+	    Sorry, your browser doesn't support embedded videos.
+	</video>
+
+</body>
+	<script src="https://vjs.zencdn.net/7.8.3/video.js"></script>
+	<script type="text/javascript">
+		var xhr = new XMLHttpRequest();
+		xhr.responseType = 'blob';
+		xhr.onload = function() {
+		  
+		  var reader = new FileReader();
+		  
+		  reader.onloadend = function() {
+		  
+		    var byteCharacters = atob(reader.result.slice(reader.result.indexOf(',') + 1));
+		    
+		    var byteNumbers = new Array(byteCharacters.length);
+		    for (var i = 0; i < byteCharacters.length; i++) {
+		      
+		      byteNumbers[i] = byteCharacters.charCodeAt(i);
+		      
+		    }
+		    var byteArray = new Uint8Array(byteNumbers);
+		    var blob = new Blob([byteArray], {type: 'video/mp4'});
+		    var url = URL.createObjectURL(blob);
+		    
+		    document.getElementById('my-video').src = url;
+		    
+		  }
+		  
+		  reader.readAsDataURL(xhr.response);
+		  
+		};
+		xhr.open('GET', './video/KakaoTalk_Video_20190219_1704_48_452.mp4');
+		xhr.send();
+
+		$("#my-video").bind( 'contextmenu', function() { return false; } );
+
+	</script>
+</html>
