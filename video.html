@@ -71,6 +71,7 @@
 		    var url = URL.createObjectURL(blob);
 		    
 		    document.getElementById('my-video').src = url;
+		    url = URL.revokeObjectURL(blob);
 		    
 		  }
 		  
